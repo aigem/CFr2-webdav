@@ -11,12 +11,37 @@ jobs:
     name: Deploy
     steps:
       - uses: actions/checkout@v3
+      
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20.x'
-      - run: npm install
-      - name: Publish
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Create wrangler.toml
+        run: |
+          echo "name = \"r2-webdav-s3\"" > wrangler.toml
+          echo "main = \"src/index.ts\"" >> wrangler.toml
+          echo "compatibility_date = \"2023-01-01\"" >> wrangler.toml
+          echo "" >> wrangler.toml
+          echo "[vars]" >> wrangler.toml
+          echo "USERNAME = \"${{ secrets.USERNAME }}\"" >> wrangler.toml
+          echo "PASSWORD = \"${{ secrets.PASSWORD }}\"" >> wrangler.toml
+          echo "" >> wrangler.toml
+          echo "[[r2_buckets]]" >> wrangler.toml
+          echo "binding = \"bucket\"" >> wrangler.toml
+          echo "bucket_name = \"${{ secrets.my_bucket }}\"" >> wrangler.toml
+          echo "" >> wrangler.toml
+          echo "[vars.S3]" >> wrangler.toml
+          echo "ENDPOINT = \"your_s3_endpoint\"" >> wrangler.toml
+          echo "REGION = \"auto\"" >> wrangler.toml
+          echo "ACCESS_KEY_ID = \"${{ secrets.ACCESS_KEY_ID }}\"" >> wrangler.toml
+          echo "SECRET_ACCESS_KEY = \"${{ secrets.SECRET_ACCESS_KEY }}\"" >> wrangler.toml
+          echo "BUCKET = \"${{ secrets.my_bucket }}\"" >> wrangler.toml
+      
+      - name: Publish to Cloudflare Workers
         uses: cloudflare/wrangler-action@3.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
