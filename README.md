@@ -1,6 +1,6 @@
 # WebDAV 和 S3 服务器 [免费 Cloudflare Worker 应用]
 
-本项目使用 Cloudflare Workers 和 R2 实现了一个兼容 WebDAV 和 S3 的服务器。
+本项目使用 Cloudflare Workers 和 R2 实现了一个兼容 WebDAV 和 S3 的服务器。 [查看R2免费额度](https://developers.cloudflare.com/r2/pricing/)
 
 ## 功能特点
 
