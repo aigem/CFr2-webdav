@@ -12,9 +12,6 @@
 
 ## 一键部署
 
-以下是根据您提供的大意，以 Markdown 格式完善的部署流程说明：
-
-
 ## GitHub Actions 部署流程
 
 ### 0. Cloudflare 准备工作
