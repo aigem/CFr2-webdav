@@ -3,7 +3,7 @@ name: Deploy to Cloudflare Workers
 on:
   push:
     branches:
-      - s3  # 或者你想触发部署的分支
+      - main  # 或者你想触发部署的分支
 
 jobs:
   deploy:
