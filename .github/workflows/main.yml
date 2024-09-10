@@ -19,4 +19,4 @@ node-version: '20.x'
 - name: Publish
 uses: cloudflare/wrangler-action@3.0.0
 with:
-apiToken: ${{ secrets.CloudFlare_API_TOKEN }}
+apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
