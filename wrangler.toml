@@ -1,4 +1,4 @@
-name = "R2-webdav-s3"
+name = "r2-webdav-s3"
 main = "src/index.ts"
 compatibility_date = "2023-01-01"
 
