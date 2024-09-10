@@ -2,6 +2,12 @@
 
 This project implements a WebDAV and S3 compatible server using Cloudflare Workers and R2.
 
+# 一键部署
+
+Description of your project goes here.
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aigem/r2-webdav-s3)
+
 ## Setup
 
 1. Install dependencies:
