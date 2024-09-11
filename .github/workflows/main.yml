@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Generate wran
+      - name: Create wrangler.toml
         run: |
           sed -e "s/\$USERNAME/$USERNAME/g" \
               -e "s/\$PASSWORD/$PASSWORD/g" \
@@ -37,9 +37,3 @@ jobs:
         uses: cloudflare/wrangler-action@3.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      
-      - name: Debug Info
-        run: |
-          echo "Node version: $(node -v)"
-          echo "NPM version: $(npm -v)"
-          echo "Wrangler version: $(npx wrangler --version)"
