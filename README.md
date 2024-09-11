@@ -1,152 +1,105 @@
-# WebDAV 和 S3 服务器 [免费 Cloudflare Worker 应用]
+# Cloudflare R2 WebDAV Server
 
-本项目使用 Cloudflare Workers 和 R2 实现了一个兼容 WebDAV 和 S3 的服务器。 [查看R2免费额度](https://developers.cloudflare.com/r2/pricing/)
+这个项目实现了一个基于 Cloudflare Workers 和 R2 存储的 WebDAV 服务器。它允许用户通过 WebDAV 协议访问和管理存储在 Cloudflare R2 中的文件和目录。
 
-## 功能特点
+## 特性
 
-- 支持 WebDAV 协议，可与各种 WebDAV 客户端兼容
-- 提供 S3 兼容的 API，可用于 S3 客户端和应用程序
-- 使用 Cloudflare R2 作为存储后端，提供高性能和低成本的存储解决方案
-- 支持基本的文件操作：上传、下载、删除、列表等
-- 提供简单的 Web 界面用于浏览文件
+- 完全兼容 WebDAV 协议
+- 基于 Cloudflare Workers，无需管理服务器
+- 使用 Cloudflare R2 作为存储后端（免费额度慷慨）
+- 支持基本的身份验证
+- 支持文件上传、下载、删除、移动和复制操作
+- 支持目录创建和列表
 
-## 一键部署
+## 一键部署 [Githut Actions]
 
-## GitHub Actions 部署流程
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://github.com/aigem/CFr2-webdav)
 
-### 0. Cloudflare 准备工作
+点击上面的按钮，按照提示进行操作，即可快速部署此项目到您的 Cloudflare Workers 账户中。
 
-- 注册并登录 Cloudflare 账户。
-- 创建一个 R2 存储桶，并记下桶的名称。
-- 创建一个 Worker API token（确保具有编辑 Cloudflare Workers 的权限），并保存 API 令牌。
+## 手动部署步骤 [Githut Actions]
 
-### 1. Fork 仓库
+如果您需要自定义配置或想要深入了解部署流程，请按以下步骤操作：
 
-- 访问 [https://github.com/aigem/r2-webdav-s3](https://github.com/aigem/r2-webdav-s3)
-- 点击页面右上角的 "Fork" 按钮，将仓库 fork 到您的 GitHub 账户。
+### 前提条件
 
-### 2. 设置 GitHub Secrets
+- Cloudflare 账户
+- 已创建的 R2 存储桶
+- GitHub 账户
 
-在您 fork 的仓库中，导航到 Settings -> Secrets and variables -> Actions，然后添加以下 secrets：
+### 步骤 1: 配置 Cloudflare
 
-- `CLOUDFLARE_API_TOKEN`: Cloudflare 的 API Token
-- `USERNAME`: WebDAV 的用户名
-- `PASSWORD`: WebDAV 的密码
-- `my_bucket`: R2 存储桶的名称
-- `ACCESS_KEY_ID`: S3 的访问密钥 ID（如果使用 S3）
-- `SECRET_ACCESS_KEY`: S3 的访问密钥（如果使用 S3）
+1. 【获取API令牌】在 Cloudflare 仪表板中，创建一个新的 API 令牌，确保它有足够的权限来管理编辑Workers(和 R2)。
+2. 【获取桶名称】创建的 R2 存储桶
 
-### 3. 创建 GitHub Action
+### 步骤 2: 准备仓库
 
-- 在您 fork 的仓库中，点击 "Actions" 标签。
-- 点击 "New workflow" 或 "set up a workflow yourself"。
-- 将文件命名为 `deploy.yml`（或您喜欢的任何名称）。
-
-### 4. 配置工作流文件
-
-将以下内容粘贴到工作流文件中(deploy.yml)：
-
-```yaml
-name: Deploy to Cloudflare Workers
-
-on:
-  push:
-    branches:
-      - main  # 或者您想触发部署的分支
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    name: Deploy
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20.x'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Create wrangler.toml
-        run: |
-          echo "name = \"r2-webdav-s3\"" > wrangler.toml
-          echo "main = \"src/index.ts\"" >> wrangler.toml
-          echo "compatibility_date = \"2023-01-01\"" >> wrangler.toml
-          echo "" >> wrangler.toml
-          echo "[vars]" >> wrangler.toml
-          echo "USERNAME = \"${{ secrets.USERNAME }}\"" >> wrangler.toml
-          echo "PASSWORD = \"${{ secrets.PASSWORD }}\"" >> wrangler.toml
-          echo "" >> wrangler.toml
-          echo "[[r2_buckets]]" >> wrangler.toml
-          echo "binding = \"bucket\"" >> wrangler.toml
-          echo "bucket_name = \"${{ secrets.my_bucket }}\"" >> wrangler.toml
-          echo "" >> wrangler.toml
-          echo "[vars.S3]" >> wrangler.toml
-          echo "ENDPOINT = \"your_s3_endpoint\"" >> wrangler.toml
-          echo "REGION = \"auto\"" >> wrangler.toml
-          echo "ACCESS_KEY_ID = \"${{ secrets.ACCESS_KEY_ID }}\"" >> wrangler.toml
-          echo "SECRET_ACCESS_KEY = \"${{ secrets.SECRET_ACCESS_KEY }}\"" >> wrangler.toml
-          echo "BUCKET = \"${{ secrets.my_bucket }}\"" >> wrangler.toml
-      
-      - name: Publish to Cloudflare Workers
-        uses: cloudflare/wrangler-action@3.0.0
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+Fork 这个仓库到您的 GitHub 账户。
+```
+https://github.com/aigem/CFr2-webdav
 ```
 
-### 5. 提交并推送更改
+### 步骤 3: 配置 GitHub Secrets
 
-- 点击 "Commit changes"提交.
+在您的 GitHub 仓库中，转到 Settings -> Secrets and variables -> Actions，添加以下 secrets：
 
-### 6. 触发部署
+- `CLOUDFLARE_API_TOKEN`: 步骤1的 Cloudflare API 令牌 (必须)
+- `USERNAME`: WebDAV 服务器的用户名 （可选，默认为 _user）
+- `PASSWORD`: WebDAV 服务器的密码 （可选，默认为 _pass）
+- `BUCKET_NAME`: 的 R2 存储桶名称 （可选，默认为 bucket 如果与你实际的bucket不符，则GithubAction部署会失败）
 
-- 对仓库进行任何更改并推送到 `main` 分支（或您在工作流中指定的分支）。
-- 这将自动触发部署过程。
-- 2分钟后就部署到 CF Worker 上了。
+### 步骤 4: 配置 GitHub Actions
 
-### 7. 查看部署状态
+1. 在您的 GitHub 仓库设置中，启用 GitHub Actions。
+2. workflow 文件已经存在，请选择： .github/workflow/main.yml
 
-- 在仓库中，点击 "Actions" 标签。
-- 您应该能看到正在运行或已完成的工作流。
-- 点击工作流以查看详细的部署日志。
+### 步骤 6: 触发部署
 
-### 8. 访问您的 Cloudflare Worker
+按上面操作完成后就会自动进行部署到CF Worker中，或将任何更改推送到 GitHub 仓库的 `main` 分支，或者手动运行 GitHub Actions 工作流。GitHub Actions 将自动触发部署流程。
 
-部署成功后，您可以在 Cloudflare 控制面板中找到您的 Worker URL。使用这个 URL 来访问您的 WebDAV 和 S3 兼容服务器。
-
-
-
-## 本地安装及设置
-
-1. Fork仓库并安装依赖：
-https://github.com/aigem/r2-webdav-s3
-cd r2-webdav-s3
-npm install
-
-2. 配置 `wrangler.toml`，填入您的凭证和存储桶等信息。
-
-3. 部署到 Cloudflare Workers：
-wrangler publish
+您可以在 GitHub 仓库的 Actions 标签页中查看部署进度。部署成功后，您可以在 Cloudflare Workers 仪表板中找到您的 Worker URL。
 
 ## 使用方法
 
-- WebDAV 端点可在根路径访问。
-- S3 兼容的端点可在 `/s3` 路径下访问。
+使用任何支持 WebDAV 协议的客到您的 Worker URL，使用配置的用户名和密码进行身份验证。
 
-更详细的使用说明，请参阅 API 文档。
+
+## 本地开发（可选）
+
+如果您需要在本地进行开发和测试，请按以下步骤操作：
+
+0. 同上面步骤1 ：配置 Cloudflare
+
+1. 克隆仓库到本地：
+   ```bash
+   git clone https://github.com/aigem/CFr2-webdav.git
+   cd cf-r2-webdav
+   ```
+
+2. 安装依赖：
+   ```bash
+   npm install
+   ```
+
+3. 修改wrangler.toml.template为wrangler.toml文件，并修改为你的实际参数：
+  
+4. 使用 Wrangler 进行本地开发：
+   ```bash
+   npx wrangler dev --local
+   ```
+
+注意：本地开发可能无法完全模拟 Cloudflare Workers 环境，特别是 R2 存储的操作。
 
 ## 注意事项
 
-- 请确保正确设置环境变量 `USERNAME` 和 `PASSWORD` 以保护您的服务器。
-- R2 存储桶需要预先创建并在 `wrangler.toml` 中正确配置。
-- 本项目仅提供基本的 WebDAV 和 S3 功能，可能不支持某些高级特性。
+- 确保妥善保管您的 API 令牌和其他敏感信息。
+- 定期更新您的依赖以确保安全性。
+- 遵守 Cloudflare 的使用政策和条款。
 
 ## 贡献
 
-欢迎贡献代码、报告问题或提出改进建议。
+欢迎提交 Pull Requests 或创建 Issues 来改进这个项目。
 
 ## 许可证
 
-本项目基于 MIT 许可证开源。
+本项目采用 MIT 许可证。
