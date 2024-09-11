@@ -55,7 +55,7 @@ ${props.map(prop => generatePropResponse(bucketName, basePath, prop)).join('\n')
 }
 
 function generatePropResponse(bucketName: string, basePath: string, prop: WebDAVProps): string {
-  const resourcePath = `/${bucketName}/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
+  const resourcePath = `/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
   return `  <D:response>
     <D:href>${resourcePath}</D:href>
     <D:propstat>
