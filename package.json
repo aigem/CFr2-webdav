@@ -1,7 +1,8 @@
 {
-	"name": "r2-webdav-s3",
-	"version": "0.2.0",
+	"name": "cf-r2-webdav",
+	"version": "0.3.0",
 	"private": true,
+	"main": "src/index.ts",
 	"scripts": {
 	  "deploy": "wrangler deploy",
 	  "dev": "wrangler dev",
