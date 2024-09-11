@@ -9,6 +9,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
+    env:
+      USERNAME: ${{ secrets.USERNAME || 'default_username' }}
+      PASSWORD: ${{ secrets.PASSWORD || 'default_password' }}
+      BUCKET_NAME: ${{ secrets.BUCKET_NAME || 'default_bucket_name' }}
+
     steps:
       - uses: actions/checkout@v3
       
@@ -20,11 +25,11 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Generate wrangler.toml
+      - name: Generate wran
         run: |
-          sed -e 's/$USERNAME/${{ secrets.USERNAME || '"'"'default_username'"'"' }}/g' \
-              -e 's/$PASSWORD/${{ secrets.PASSWORD || '"'"'default_password'"'"' }}/g' \
-              -e 's/$BUCKET_NAME/${{ secrets.BUCKET_NAME || '"'"'default_bucket_name'"'"' }}/g' \
+          sed -e "s/\$USERNAME/$USERNAME/g" \
+              -e "s/\$PASSWORD/$PASSWORD/g" \
+              -e "s/\$BUCKET_NAME/$BUCKET_NAME/g" \
               wrangler.toml.template > wrangler.toml
           cat wrangler.toml
       
