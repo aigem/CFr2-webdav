@@ -14,7 +14,7 @@ def export_files(files, output_file):
         for file_path in files:
             out.write(f"文件名：{file_path}\n")
             out.write(read_file(file_path))
-            out.write("\n++++++\n\n")
+            out.write("\n\n")
     print(f"文件内容已成功导出到 {output_file}")
 
 files_to_export = [
@@ -25,8 +25,6 @@ files_to_export = [
     "src/types.ts",
     "src/handlers/requestHandler.ts",
     "src/handlers/webdavHandler.ts",
-    "src/handlers/s3Handler.ts",
-    "src/utils/s3Client.ts",
     "src/utils/auth.ts",
     "src/utils/cors.ts",
     "src/utils/logger.ts",

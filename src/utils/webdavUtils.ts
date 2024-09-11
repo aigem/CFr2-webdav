@@ -1,3 +1,5 @@
+import { WebDAVProps } from '../types';
+
 export async function* listAll(bucket: R2Bucket, prefix: string, isRecursive = false) {
   let cursor: string | undefined = undefined;
   do {
@@ -14,7 +16,7 @@ export async function* listAll(bucket: R2Bucket, prefix: string, isRecursive = f
   } while (cursor);
 }
 
-export function fromR2Object(object: R2Object | null) {
+export function fromR2Object(object: R2Object | null): WebDAVProps {
   if (!object) {
     return {
       creationdate: new Date().toUTCString(),
@@ -24,7 +26,7 @@ export function fromR2Object(object: R2Object | null) {
       getcontenttype: undefined,
       getetag: undefined,
       getlastmodified: new Date().toUTCString(),
-      resourcetype: "<collection />"
+      resourcetype: ""
     };
   }
   return {
@@ -39,7 +41,33 @@ export function fromR2Object(object: R2Object | null) {
   };
 }
 
-export function make_resource_path(request: Request) {
+export function make_resource_path(request: Request): string {
   let path = new URL(request.url).pathname.slice(1);
   return path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+export function generatePropfindResponse(basePath: string, props: WebDAVProps[]): string {
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+${props.map(prop => generatePropResponse(basePath, prop)).join('\n')}
+</D:multistatus>`;
+  return xml;
+}
+
+function generatePropResponse(basePath: string, prop: WebDAVProps): string {
+  const resourcePath = `/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
+  return `  <D:response>
+    <D:href>${resourcePath}</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:creationdate>${prop.creationdate}</D:creationdate>
+        <D:getcontentlength>${prop.getcontentlength}</D:getcontentlength>
+        <D:getcontenttype>${prop.getcontenttype || ''}</D:getcontenttype>
+        <D:getetag>${prop.getetag || ''}</D:getetag>
+        <D:getlastmodified>${prop.getlastmodified}</D:getlastmodified>
+        <D:resourcetype>${prop.resourcetype ? '<D:collection/>' : ''}</D:resourcetype>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>`;
 }
