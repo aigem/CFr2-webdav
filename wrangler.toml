@@ -10,3 +10,4 @@ compatibility_date = "2023-01-01"
 
 [[r2_buckets]]
 binding = "BUCKET"
+bucket_name = "${BUCKET_NAME}"
