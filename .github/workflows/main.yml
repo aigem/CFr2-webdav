@@ -22,9 +22,9 @@ jobs:
       
       - name: Generate wrangler.toml
         run: |
-          sed -e 's/$USERNAME/${{ secrets.USERNAME || 'default_username' }}/g' \
-              -e 's/$PASSWORD/${{ secrets.PASSWORD || 'default_g' \
-              -e 's/$BUCKET_NAME/${{ secrets.BUCKET_NAME || 'default_bucket_name' }}/g' \
+          sed -e 's/$USERNAME/${{ secrets.USERNAME || '"'"'default_username'"'"' }}/g' \
+              -e 's/$PASSWORD/${{ secrets.PASSWORD || '"'"'default_password'"'"' }}/g' \
+              -e 's/$BUCKET_NAME/${{ secrets.BUCKET_NAME || '"'"'default_bucket_name'"'"' }}/g' \
               wrangler.toml.template > wrangler.toml
           cat wrangler.toml
       
@@ -33,3 +33,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       
+      - name: Debug Info
+        run: |
+          echo "Node version: $(node -v)"
+          echo "NPM version: $(npm -v)"
+          echo "Wrangler version: $(npx wrangler --version)"
