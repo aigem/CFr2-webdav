@@ -98,7 +98,7 @@ async function handleDirectory(bucket: R2Bucket, resource_path: string, bucketNa
       if (object.key === resource_path) continue;
       const isDirectory = object.customMetadata?.resourcetype === "";
       const displayName = object.key.split('/').pop() || object.key;
-      const href = `/${bucketName}/${object.key + (isDirectory ? "/" : "")}`;
+      const href = `/${object.key + (isDirectory ? "/" : "")}`;
       items.push({ name: `${isDirectory ? '📁 ' : '📄 '}${displayName}`, href });
     }
   } catch (error) {
