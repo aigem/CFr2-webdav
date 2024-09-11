@@ -8,32 +8,23 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy
-    env:
-      USERNAME: ${{ secrets.USERNAME || 'default_username' }}
-      PASSWORD: ${{ secrets.PASSWORD || 'default_password' }}
-      BUCKET_NAME: ${{ secrets.BUCKET_NAME || 'default_bucket_name' }}
-
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20.x'
-      
-      - name: Install dependencies
-        run: npm install
-      
+      - uses: actions/checkout@v4
+
       - name: Create wrangler.toml
+        env:
+          USERNAME: ${{ secrets.USERNAME || 'default_username' }}
+          PASSWORD: ${{ secrets.PASSWORD || 'default_password' }}
+          BUCKET_NAME: ${{ secrets.BUCKET_NAME || 'default_bucket_name' }}
         run: |
           sed -e "s/\$USERNAME/$USERNAME/g" \
               -e "s/\$PASSWORD/$PASSWORD/g" \
               -e "s/\$BUCKET_NAME/$BUCKET_NAME/g" \
               wrangler.toml.template > wrangler.toml
           cat wrangler.toml
-      
-      - name: Publish to Cloudflare Workers
-        uses: cloudflare/wrangler-action@3.0.0
+
+      - name: Build & Deploy Worker
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
