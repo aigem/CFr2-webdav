@@ -1,7 +1,8 @@
 export interface Env {
-  bucket: R2Bucket;
+  BUCKET: R2Bucket;
   USERNAME: string;
   PASSWORD: string;
+  BUCKET_NAME: string;  // 新增的环境变量
 }
 
 export interface CacheableResponse {

@@ -6,7 +6,7 @@ import { WebDAVProps } from '../types';
 const SUPPORT_METHODS = ["OPTIONS", "PROPFIND", "MKCOL", "GET", "HEAD", "PUT", "COPY", "MOVE", "DELETE"];
 const DAV_CLASS = "1, 2";
 
-export async function handleWebDAV(request: Request, bucket: R2Bucket): Promise<Response> {
+export async function handleWebDAV(request: Request, bucket: R2Bucket, bucketName: string): Promise<Response> {
   try {
     switch (request.method) {
       case "OPTIONS":
@@ -14,7 +14,7 @@ export async function handleWebDAV(request: Request, bucket: R2Bucket): Promise<
       case "HEAD":
         return await handleHead(request, bucket);
       case "GET":
-        return await handleGet(request, bucket);
+        return await handleGet(request, bucket, bucketName);
       case "PUT":
         return await handlePut(request, bucket);
       case "DELETE":
@@ -22,7 +22,7 @@ export async function handleWebDAV(request: Request, bucket: R2Bucket): Promise<
       case "MKCOL":
         return await handleMkcol(request, bucket);
       case "PROPFIND":
-        return await handlePropfind(request, bucket);
+        return await handlePropfind(request, bucket, bucketName);
       case "COPY":
         return await handleCopy(request, bucket);
       case "MOVE":
@@ -74,19 +74,19 @@ async function handleHead(request: Request, bucket: R2Bucket): Promise<Response>
   });
 }
 
-async function handleGet(request: Request, bucket: R2Bucket): Promise<Response> {
+async function handleGet(request: Request, bucket: R2Bucket, bucketName: string): Promise<Response> {
   const resource_path = make_resource_path(request);
 
   if (request.url.endsWith("/")) {
     // 处理目录
-    return await handleDirectory(bucket, resource_path);
+    return await handleDirectory(bucket, resource_path, bucketName);
   } else {
     // 处理文件
     return await handleFile(bucket, resource_path);
   }
 }
 
-async function handleDirectory(bucket: R2Bucket, resource_path: string): Promise<Response> {
+async function handleDirectory(bucket: R2Bucket, resource_path: string, bucketName: string): Promise<Response> {
   let items = [];
 
   if (resource_path !== "") {
@@ -98,7 +98,7 @@ async function handleDirectory(bucket: R2Bucket, resource_path: string): Promise
       if (object.key === resource_path) continue;
       const isDirectory = object.customMetadata?.resourcetype === "";
       const displayName = object.key.split('/').pop() || object.key;
-      const href = `/${object.key + (isDirectory ? "/" : "")}`;
+      const href = `/${bucketName}/${object.key + (isDirectory ? "/" : "")}`;
       items.push({ name: `${isDirectory ? '📁 ' : '📄 '}${displayName}`, href });
     }
   } catch (error) {
@@ -196,7 +196,7 @@ async function handleMkcol(request: Request, bucket: R2Bucket): Promise<Response
   }
 }
 
-async function handlePropfind(request: Request, bucket: R2Bucket): Promise<Response> {
+async function handlePropfind(request: Request, bucket: R2Bucket, bucketName: string): Promise<Response> {
   const resource_path = make_resource_path(request);
   const depth = request.headers.get("Depth") || "infinity";
 
@@ -215,7 +215,7 @@ async function handlePropfind(request: Request, bucket: R2Bucket): Promise<Respo
       }
     }
 
-    const xml = generatePropfindResponse(resource_path, props);
+    const xml = generatePropfindResponse(bucketName, resource_path, props);
     return new Response(xml, {
       status: 207,
       headers: { "Content-Type": "application/xml; charset=utf-8" }
