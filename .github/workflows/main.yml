@@ -3,7 +3,7 @@ name: Deploy to Cloudflare Workers
 on:
   push:
     branches:
-      - main  # 或者你想触发部署的分支
+      - main
 
 jobs:
   deploy:
@@ -20,21 +20,16 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Debug Info
+      - name: Generate wrangler.toml
         run: |
-          echo "Node version: $(node -v)"
-          echo "NPM version: $(npm -v)"
-          echo "Wrangler version: $(npx wrangler --version)"
-          echo "BUCKET_NAME: $BUCKET_NAME"
-        env:
-          BUCKET_NAME: ${{ secrets.BUCKET_NAME || 'default_bucket_name' }}
+          sed -e 's/$USERNAME/${{ secrets.USERNAME || 'default_username' }}/g' \
+              -e 's/$PASSWORD/${{ secrets.PASSWORD || 'default_g' \
+              -e 's/$BUCKET_NAME/${{ secrets.BUCKET_NAME || 'default_bucket_name' }}/g' \
+              wrangler.toml.template > wrangler.toml
+          cat wrangler.toml
       
       - name: Publish to Cloudflare Workers
         uses: cloudflare/wrangler-action@3.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --debug
-        env:
-          USERNAME: ${{ secrets.USERNAME || 'default_username' }}
-          PASSWORD: ${{ secrets.PASSWORD || 'default_password' }}
-          BUCKET_NAME: ${{ secrets.BUCKET_NAME || 'default_bucket_name' }}
+      
