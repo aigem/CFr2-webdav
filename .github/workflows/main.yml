@@ -20,18 +20,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Create wrangler.toml
-        run: |
-          echo "name = \"CF-r2-webdav\"" > wrangler.toml
-          echo "main = \"src/index.ts\"" >> wrangler.toml
-          echo "compatibility_date = \"2023-01-01\"" >> wrangler.toml
-          echo "" >> wrangler.toml
-          echo "[vars]" >> wrangler.toml
-          echo "" >> wrangler.toml
-          echo "[[r2_buckets]]" >> wrangler.toml
-          echo "binding = \"BUCKET\"" >> wrangler.toml
-
-      
+       
       - name: Publish to Cloudflare Workers
         uses: cloudflare/wrangler-action@3.0.0
         with:
