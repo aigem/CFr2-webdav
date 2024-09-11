@@ -1,5 +1,5 @@
 {
-	"name": "r2-webdav-s3",
+	"name": "cf-r2-webdav",
 	"version": "0.3.0",
 	"private": true,
 	"scripts": {
