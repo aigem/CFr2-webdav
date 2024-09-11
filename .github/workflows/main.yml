@@ -25,6 +25,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         env:
-          USERNAME: ${{ secrets.USERNAME || 'default_username' }}
-          PASSWORD: ${{ secrets.PASSWORD || 'default_password' }}
-          BUCKET_NAME: ${{ secrets.BUCKET_NAME || 'default_bucket_name' }}
+          USERNAME: ${{ secrets.USERNAME || '_user' }}
+          PASSWORD: ${{ secrets.PASSWORD || '_pass' }}
+          BUCKET_NAME: ${{ secrets.BUCKET_NAME || 'bucket' }}
