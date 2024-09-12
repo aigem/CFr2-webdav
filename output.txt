@@ -1,3 +1,4 @@
+文件名：src/handlers/webdavHandler.ts
 import { listAll, fromR2Object, make_resource_path, generatePropfindResponse } from '../utils/webdavUtils';
 import { logger } from '../utils/logger';
 import { generateHTML, generateErrorHTML } from '../utils/templates';
@@ -36,9 +37,9 @@ export async function handleWebDAV(request: Request, bucket: R2Bucket, bucketNam
           }
         });
     }
-  } catch (error) { const err = error as Error;
+  } catch (error) {
     logger.error("Error in WebDAV handling:", error);
-    return new Response(generateErrorHTML("Internal Server Error", err.message), {
+    return new Response(generateErrorHTML("Internal Server Error", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
@@ -96,14 +97,14 @@ async function handleDirectory(bucket: R2Bucket, resource_path: string, bucketNa
   try {
     for await (const object of listAll(bucket, resource_path)) {
       if (object.key === resource_path) continue;
-      const isDirectory = object.customMetadata?.resourcetype === "collection";
+      const isDirectory = object.customMetadata?.resourcetype === "";
       const displayName = object.key.split('/').pop() || object.key;
-      const href = `/${object.key}${isDirectory ? "/" : ""}`;
+      const href = `/${object.key + (isDirectory ? "/" : "")}`;
       items.push({ name: `${isDirectory ? '📁 ' : '📄 '}${displayName}`, href });
     }
-  } catch (error) { const err = error as Error;
+  } catch (error) {
     logger.error("Error listing objects:", error);
-    return new Response(generateErrorHTML("Error listing directory contents", err.message), {
+    return new Response(generateErrorHTML("Error listing directory contents", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
@@ -131,9 +132,9 @@ async function handleFile(bucket: R2Bucket, resource_path: string): Promise<Resp
         "Last-Modified": object.uploaded.toUTCString()
       }
     });
-  } catch (error) { const err = error as Error;
+  } catch (error) {
     logger.error("Error getting object:", error);
-    return new Response(generateErrorHTML("Error retrieving file", err.message), {
+    return new Response(generateErrorHTML("Error retrieving file", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
@@ -151,9 +152,9 @@ async function handlePut(request: Request, bucket: R2Bucket): Promise<Response> 
       },
     });
     return new Response("Created", { status: 201 });
-  } catch (error) { const err = error as Error;
+  } catch (error) {
     logger.error("Error uploading file:", error);
-    return new Response(generateErrorHTML("Error uploading file", err.message), {
+    return new Response(generateErrorHTML("Error uploading file", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
@@ -166,9 +167,9 @@ async function handleDelete(request: Request, bucket: R2Bucket): Promise<Respons
   try {
     await bucket.delete(resource_path);
     return new Response("No Content", { status: 204 });
-  } catch (error) { const err = error as Error;
+  } catch (error) {
     logger.error("Error deleting object:", error);
-    return new Response(generateErrorHTML("Error deleting file", err.message), {
+    return new Response(generateErrorHTML("Error deleting file", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
@@ -183,14 +184,13 @@ async function handleMkcol(request: Request, bucket: R2Bucket): Promise<Response
   }
 
   try {
-    // 尝试通过上传空数据来创建目录
-    await bucket.put(resource_path + "/", new Uint8Array(), {
-      customMetadata: { resourcetype: "collection" }
+    await bucket.put(resource_path + "/.keep", new Uint8Array(), {
+      customMetadata: { resourcetype: "" }
     });
     return new Response("Created", { status: 201 });
-  } catch (error) { const err = error as Error;
+  } catch (error) {
     logger.error("Error creating collection:", error);
-    return new Response(generateErrorHTML("Error creating collection", err.message), {
+    return new Response(generateErrorHTML("Error creating collection", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
@@ -217,19 +217,20 @@ async function handlePropfind(request: Request, bucket: R2Bucket, bucketName: st
     }
 
     const xml = generatePropfindResponse(bucketName, resource_path, props);
-    logger.info("Generated XML for PROPFIND:", xml);
+    logger.info("Generated XML for PROPFIND:", xml); // Add this line for logging
     return new Response(xml, {
       status: 207,
       headers: { "Content-Type": "application/xml; charset=utf-8" }
     });
-  } catch (error) { const err = error as Error;
+  } catch (error) {
     logger.error("Error in PROPFIND:", error);
-    return new Response(generateErrorHTML("Error in PROPFIND", err.message), {
+    return new Response(generateErrorHTML("Error in PROPFIND", error.message), {
       status: 500,
       headers: { "Content-Type": "application/xml; charset=utf-8" }
     });
   }
 }
+
 
 async function handleCopy(request: Request, bucket: R2Bucket): Promise<Response> {
   const sourcePath = make_resource_path(request);
@@ -252,9 +253,9 @@ async function handleCopy(request: Request, bucket: R2Bucket): Promise<Response>
     });
 
     return new Response("Created", { status: 201 });
-  } catch (error) { const err = error as Error;
-    logger.error("Error copying object:", error);
-    return new Response(generateErrorHTML("Error copying file", err.message), {
+  } catch (error) {
+    logger.error("Error in COPY:", error);
+    return new Response(generateErrorHTML("Error copying file", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
@@ -282,12 +283,91 @@ async function handleMove(request: Request, bucket: R2Bucket): Promise<Response>
     });
 
     await bucket.delete(sourcePath);
+
     return new Response("No Content", { status: 204 });
-  } catch (error) { const err = error as Error;
-    logger.error("Error moving object:", error);
-    return new Response(generateErrorHTML("Error moving file", err.message), {
+  } catch (error) {
+    logger.error("Error in MOVE:", error);
+    return new Response(generateErrorHTML("Error moving file", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
   }
 }
+
+
+文件名：src/utils/webdavUtils.ts
+import { WebDAVProps } from '../types';
+
+export async function* listAll(bucket: R2Bucket, prefix: string, isRecursive = false) {
+  let cursor: string | undefined = undefined;
+  do {
+    const r2_objects = await bucket.list({
+      prefix,
+      delimiter: isRecursive ? undefined : "/",
+      cursor,
+      include: ["httpMetadata", "customMetadata"]
+    });
+    for (const object of r2_objects.objects) {
+      yield object;
+    }
+    cursor = r2_objects.truncated ? r2_objects.cursor : undefined;
+  } while (cursor);
+}
+
+export function fromR2Object(object: R2Object | null): WebDAVProps {
+  if (!object) {
+    return {
+      creationdate: new Date().toUTCString(),
+      displayname: undefined,
+      getcontentlanguage: undefined,
+      getcontentlength: "0",
+      getcontenttype: undefined,
+      getetag: undefined,
+      getlastmodified: new Date().toUTCString(),
+      resourcetype: ""
+    };
+  }
+  return {
+    creationdate: object.uploaded.toUTCString(),
+    displayname: object.httpMetadata?.contentDisposition,
+    getcontentlanguage: object.httpMetadata?.contentLanguage,
+    getcontentlength: object.size.toString(),
+    getcontenttype: object.httpMetadata?.contentType,
+    getetag: object.etag,
+    getlastmodified: object.uploaded.toUTCString(),
+    resourcetype: object.customMetadata?.resourcetype ?? ""
+  };
+}
+
+export function make_resource_path(request: Request): string {
+  let path = new URL(request.url).pathname.slice(1);
+  return path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+export function generatePropfindResponse(bucketName: string, basePath: string, props: WebDAVProps[]): string {
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+${props.map(prop => generatePropResponse(bucketName, basePath, prop)).join('\n')}
+</D:multistatus>`;
+  return xml;
+}
+
+function generatePropResponse(bucketName: string, basePath: string, prop: WebDAVProps): string {
+  const resourcePath = `/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
+  return `  <D:response>
+    <D:href>${resourcePath}</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:creationdate>${prop.creationdate}</D:creationdate>
+        <D:getcontentlength>${prop.getcontentlength}</D:getcontentlength>
+        <D:getcontenttype>${prop.getcontenttype || ''}</D:getcontenttype>
+        <D:getetag>${prop.getetag || ''}</D:getetag>
+        <D:getlastmodified>${prop.getlastmodified}</D:getlastmodified>
+        <D:resourcetype>${prop.resourcetype ? '<D:collection/>' : ''}</D:resourcetype>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>`;
+}
+
+

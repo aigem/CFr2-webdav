@@ -1,19 +1,26 @@
+import { R2Object } from '@cloudflare/workers-types';
 import { WebDAVProps } from '../types';
 
-export async function* listAll(bucket: R2Bucket, prefix: string, isRecursive = false) {
-  let cursor: string | undefined = undefined;
-  do {
-    const r2_objects = await bucket.list({
-      prefix,
-      delimiter: isRecursive ? undefined : "/",
-      cursor,
-      include: ["httpMetadata", "customMetadata"]
-    });
-    for (const object of r2_objects.objects) {
+export function make_resource_path(request: Request): string {
+  const url = new URL(request.url);
+  return decodeURIComponent(url.pathname.slice(1));
+}
+
+export async function* listAll(bucket: R2Bucket, prefix: string) {
+  const options = { prefix, delimiter: "/" };
+  let result = await bucket.list(options);
+
+  while (result.objects.length > 0) {
+    for (const object of result.objects) {
       yield object;
     }
-    cursor = r2_objects.truncated ? r2_objects.cursor : undefined;
-  } while (cursor);
+
+    if (result.truncated && result.cursor) {
+      result = await bucket.list({ ...options, cursor: result.cursor });
+    } else {
+      break;
+    }
+  }
 }
 
 export function fromR2Object(object: R2Object | null): WebDAVProps {
@@ -26,36 +33,31 @@ export function fromR2Object(object: R2Object | null): WebDAVProps {
       getcontenttype: undefined,
       getetag: undefined,
       getlastmodified: new Date().toUTCString(),
-      resourcetype: ""
+      resourcetype: "collection"
     };
   }
   return {
     creationdate: object.uploaded.toUTCString(),
-    displayname: object.httpMetadata?.contentDisposition,
+    displayname: object.key.split('/').pop(),
     getcontentlanguage: object.httpMetadata?.contentLanguage,
     getcontentlength: object.size.toString(),
     getcontenttype: object.httpMetadata?.contentType,
     getetag: object.etag,
     getlastmodified: object.uploaded.toUTCString(),
-    resourcetype: object.customMetadata?.resourcetype ?? ""
+    resourcetype: object.customMetadata?.resourcetype || ""
   };
 }
 
-export function make_resource_path(request: Request): string {
-  let path = new URL(request.url).pathname.slice(1);
-  return path.endsWith("/") ? path.slice(0, -1) : path;
-}
-
 export function generatePropfindResponse(bucketName: string, basePath: string, props: WebDAVProps[]): string {
-  const xml = `<?xml version="1.0" encoding="utf-8"?>
-<D:multistatus xmlns:D="DAV:">
-${props.map(prop => generatePropResponse(bucketName, basePath, prop)).join('\n')}
-</D:multistatus>`;
-  return xml;
+  const responses = props.map(prop => generatePropResponse(bucketName, basePath, prop)).join("\n");
+  return `<?xml version="1.0" encoding="utf-8" ?>
+  <D:multistatus xmlns:D="DAV:">
+${responses}
+  </D:multistatus>`;
 }
 
 function generatePropResponse(bucketName: string, basePath: string, prop: WebDAVProps): string {
-  const resourcePath = `/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
+  const resourcePath = `/${bucketName}/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
   return `  <D:response>
     <D:href>${resourcePath}</D:href>
     <D:propstat>

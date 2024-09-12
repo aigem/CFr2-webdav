@@ -19,11 +19,11 @@ def export_files(files, output_file):
 
 files_to_export = [
     # "tsconfig.json",
-    "src/utils/templates.ts",
+    # "src/utils/templates.ts",
     # "package.json",
     # "src/index.ts",
     # "src/types.ts",
-    "src/handlers/requestHandler.ts",
+    # "src/handlers/requestHandler.ts",
     "src/handlers/webdavHandler.ts",
     # "src/utils/auth.ts",
     # "src/utils/cors.ts",
