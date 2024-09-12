@@ -1,56 +1,34 @@
 import { listAll, fromR2Object, make_resource_path, generatePropfindResponse } from '../utils/webdavUtils';
 import { logger } from '../utils/logger';
 import { generateHTML, generateErrorHTML } from '../utils/templates';
-import { authenticate } from '../utils/auth';
-import { setCORSHeaders } from '../utils/cors';
-import { WebDAVProps, Env } from '../types';
+import { WebDAVProps } from '../types';
 
 const SUPPORT_METHODS = ["OPTIONS", "PROPFIND", "MKCOL", "GET", "HEAD", "PUT", "COPY", "MOVE", "DELETE"];
 const DAV_CLASS = "1, 2";
 
-export async function handleWebDAV(request: Request, bucket: R2Bucket, bucketName: string, env: Env): Promise<Response> {
-
-  // 身份验证处理
-  if (!authenticate(request, env)) {
-    return new Response("Unauthorized", {
-      status: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="WebDAV"' }
-    });
-  }
-
+export async function handleWebDAV(request: Request, bucket: R2Bucket, bucketName: string): Promise<Response> {
   try {
-    let response: Response;
-
     switch (request.method) {
       case "OPTIONS":
-        response = handleOptions();
-        break;
+        return handleOptions();
       case "HEAD":
-        response = await handleHead(request, bucket);
-        break;
+        return await handleHead(request, bucket);
       case "GET":
-        response = await handleGet(request, bucket, bucketName);
-        break;
+        return await handleGet(request, bucket, bucketName);
       case "PUT":
-        response = await handlePut(request, bucket);
-        break;
+        return await handlePut(request, bucket);
       case "DELETE":
-        response = await handleDelete(request, bucket);
-        break;
+        return await handleDelete(request, bucket);
       case "MKCOL":
-        response = await handleMkcol(request, bucket);
-        break;
+        return await handleMkcol(request, bucket);
       case "PROPFIND":
-        response = await handlePropfind(request, bucket, bucketName);
-        break;
+        return await handlePropfind(request, bucket, bucketName);
       case "COPY":
-        response = await handleCopy(request, bucket);
-        break;
+        return await handleCopy(request, bucket);
       case "MOVE":
-        response = await handleMove(request, bucket);
-        break;
+        return await handleMove(request, bucket);
       default:
-        response = new Response("Method Not Allowed", {
+        return new Response("Method Not Allowed", {
           status: 405,
           headers: {
             Allow: SUPPORT_METHODS.join(", "),
@@ -58,14 +36,8 @@ export async function handleWebDAV(request: Request, bucket: R2Bucket, bucketNam
           }
         });
     }
-
-    // CORS 头部处理
-    setCORSHeaders(response, request);
-    return response;
-
-  } catch (error) {
-    const err = error as Error;
-    logger.error("Error in WebDAV handling:", err);
+  } catch (error) { const err = error as Error;
+    logger.error("Error in WebDAV handling:", error);
     return new Response(generateErrorHTML("Internal Server Error", err.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
@@ -78,25 +50,24 @@ function handleOptions(): Response {
     status: 200,
     headers: {
       Allow: SUPPORT_METHODS.join(", "),
-      DAV: DAV_CLASS,
-      "MS-Author-Via": "DAV",  // Windows-specific WebDAV header
-      "Accept-Ranges": "bytes"  // Enable range requests
+      DAV: DAV_CLASS
     }
   });
 }
 
 async function handleHead(request: Request, bucket: R2Bucket): Promise<Response> {
-  const path = make_resource_path(request);
-  const object = await bucket.head(path);
+  const resource_path = make_resource_path(request);
+  const object = await bucket.head(resource_path);
+
   if (!object) {
-    return new Response("Not Found", { status: 404 });
+    return new Response(null, { status: 404 });
   }
 
   return new Response(null, {
     status: 200,
     headers: {
+      "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
       "Content-Length": object.size.toString(),
-      "Content-Type": object.httpMetadata?.contentType || "application/octet-stream",
       "ETag": object.etag,
       "Last-Modified": object.uploaded.toUTCString()
     }
@@ -104,131 +75,219 @@ async function handleHead(request: Request, bucket: R2Bucket): Promise<Response>
 }
 
 async function handleGet(request: Request, bucket: R2Bucket, bucketName: string): Promise<Response> {
-  const path = make_resource_path(request);
-  const object = await bucket.get(path);
-  if (!object) {
-    return new Response(generateErrorHTML("Not Found", `The resource at ${path} could not be found.`), {
-      status: 404,
+  const resource_path = make_resource_path(request);
+
+  if (request.url.endsWith("/")) {
+    // 处理目录
+    return await handleDirectory(bucket, resource_path, bucketName);
+  } else {
+    // 处理文件
+    return await handleFile(bucket, resource_path);
+  }
+}
+
+async function handleDirectory(bucket: R2Bucket, resource_path: string, bucketName: string): Promise<Response> {
+  let items = [];
+
+  if (resource_path !== "") {
+    items.push({ name: "📁 ..", href: "../" });
+  }
+
+  try {
+    for await (const object of listAll(bucket, resource_path)) {
+      if (object.key === resource_path) continue;
+      const isDirectory = object.customMetadata?.resourcetype === "collection";
+      const displayName = object.key.split('/').pop() || object.key;
+      const href = `/${object.key}${isDirectory ? "/" : ""}`;
+      items.push({ name: `${isDirectory ? '📁 ' : '📄 '}${displayName}`, href });
+    }
+  } catch (error) { const err = error as Error;
+    logger.error("Error listing objects:", error);
+    return new Response(generateErrorHTML("Error listing directory contents", err.message), {
+      status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
   }
 
-  if (object.writeHttpMetadata) {
-    object.writeHttpMetadata(request.headers);
-  }
-
-  return new Response(object.body, {
+  const page = generateHTML("WebDAV File Browser", items);
+  return new Response(page, {
     status: 200,
-    headers: {
-      "Content-Length": object.size.toString(),
-      "Content-Type": object.httpMetadata?.contentType || "application/octet-stream",
-      "ETag": object.etag,
-      "Last-Modified": object.uploaded.toUTCString()
-    }
+    headers: { "Content-Type": "text/html; charset=utf-8" }
   });
+}
+
+async function handleFile(bucket: R2Bucket, resource_path: string): Promise<Response> {
+  try {
+    const object = await bucket.get(resource_path);
+    if (!object) {
+      return new Response("Not Found", { status: 404 });
+    }
+    return new Response(object.body, {
+      status: 200,
+      headers: {
+        "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
+        "Content-Length": object.size.toString(),
+        "ETag": object.etag,
+        "Last-Modified": object.uploaded.toUTCString()
+      }
+    });
+  } catch (error) { const err = error as Error;
+    logger.error("Error getting object:", error);
+    return new Response(generateErrorHTML("Error retrieving file", err.message), {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
+  }
 }
 
 async function handlePut(request: Request, bucket: R2Bucket): Promise<Response> {
-  const path = make_resource_path(request);
-  const object = await bucket.put(path, request.body, {
-    httpMetadata: request.headers
-  });
+  const resource_path = make_resource_path(request);
 
-  return new Response(null, {
-    status: 201,
-    headers: {
-      ETag: object.etag,
-      "Content-Length": object.size.toString(),
-      "Last-Modified": object.uploaded.toUTCString()
-    }
-  });
+  try {
+    const body = await request.arrayBuffer();
+    await bucket.put(resource_path, body, {
+      httpMetadata: {
+        contentType: request.headers.get("Content-Type") || "application/octet-stream",
+      },
+    });
+    return new Response("Created", { status: 201 });
+  } catch (error) { const err = error as Error;
+    logger.error("Error uploading file:", error);
+    return new Response(generateErrorHTML("Error uploading file", err.message), {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
+  }
 }
 
 async function handleDelete(request: Request, bucket: R2Bucket): Promise<Response> {
-  const path = make_resource_path(request);
-  const object = await bucket.head(path);
-  if (!object) {
-    return new Response("Not Found", { status: 404 });
-  }
+  const resource_path = make_resource_path(request);
 
-  await bucket.delete(path);
-  return new Response("Deleted", { status: 204 });
+  try {
+    await bucket.delete(resource_path);
+    return new Response("No Content", { status: 204 });
+  } catch (error) { const err = error as Error;
+    logger.error("Error deleting object:", error);
+    return new Response(generateErrorHTML("Error deleting file", err.message), {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
+  }
 }
 
 async function handleMkcol(request: Request, bucket: R2Bucket): Promise<Response> {
-  const path = make_resource_path(request);
-  const object = await bucket.head(path);
-  if (object) {
-    return new Response("Conflict", { status: 409 });
+  const resource_path = make_resource_path(request);
+
+  if (resource_path === "") {
+    return new Response("Method Not Allowed", { status: 405 });
   }
 
-  await bucket.put(path, null);
-  return new Response("Collection Created", { status: 201 });
+  try {
+    // 尝试通过上传空数据来创建目录
+    await bucket.put(resource_path + "/", new Uint8Array(), {
+      customMetadata: { resourcetype: "collection" }
+    });
+    return new Response("Created", { status: 201 });
+  } catch (error) { const err = error as Error;
+    logger.error("Error creating collection:", error);
+    return new Response(generateErrorHTML("Error creating collection", err.message), {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
+  }
 }
 
 async function handlePropfind(request: Request, bucket: R2Bucket, bucketName: string): Promise<Response> {
-  const path = make_resource_path(request);
-  const object = await bucket.head(path);
-  if (!object) {
-    return new Response("Not Found", { status: 404 });
-  }
+  const resource_path = make_resource_path(request);
+  const depth = request.headers.get("Depth") || "infinity";
 
-  const depth = request.headers.get("Depth") || "1";
-  let props: WebDAVProps[] = [];
-
-  if (depth === "1") {
-    for await (const obj of listAll(bucket, path)) {
-      props.push(fromR2Object(obj));
+  try {
+    const props: WebDAVProps[] = [];
+    if (depth !== "0") {
+      for await (const object of listAll(bucket, resource_path)) {
+        props.push(fromR2Object(object));
+      }
+    } else {
+      const object = await bucket.head(resource_path);
+      if (object) {
+        props.push(fromR2Object(object));
+      } else {
+        return new Response("Not Found", { status: 404 });
+      }
     }
-  } else {
-    props.push(fromR2Object(object));
+
+    const xml = generatePropfindResponse(bucketName, resource_path, props);
+    logger.info("Generated XML for PROPFIND:", xml);
+    return new Response(xml, {
+      status: 207,
+      headers: { "Content-Type": "application/xml; charset=utf-8" }
+    });
+  } catch (error) { const err = error as Error;
+    logger.error("Error in PROPFIND:", error);
+    return new Response(generateErrorHTML("Error in PROPFIND", err.message), {
+      status: 500,
+      headers: { "Content-Type": "application/xml; charset=utf-8" }
+    });
   }
-
-  const propfindResponse = generatePropfindResponse(bucketName, path, props);
-
-  return new Response(propfindResponse, {
-    status: 207,
-    headers: {
-      "Content-Type": "application/xml; charset=utf-8"
-    }
-  });
 }
 
 async function handleCopy(request: Request, bucket: R2Bucket): Promise<Response> {
-  const srcPath = make_resource_path(request);
-  const dstPath = request.headers.get("Destination");
-  if (!dstPath) {
-    return new Response("Bad Request", { status: 400 });
+  const sourcePath = make_resource_path(request);
+  const destinationHeader = request.headers.get("Destination");
+  if (!destinationHeader) {
+    return new Response("Bad Request: Destination header is missing", { status: 400 });
   }
+  const destinationUrl = new URL(destinationHeader);
+  const destinationPath = make_resource_path(new Request(destinationUrl));
 
-  const object = await bucket.get(srcPath);
-  if (!object) {
-    return new Response("Not Found", { status: 404 });
+  try {
+    const sourceObject = await bucket.get(sourcePath);
+    if (!sourceObject) {
+      return new Response("Not Found", { status: 404 });
+    }
+
+    await bucket.put(destinationPath, sourceObject.body, {
+      httpMetadata: sourceObject.httpMetadata,
+      customMetadata: sourceObject.customMetadata
+    });
+
+    return new Response("Created", { status: 201 });
+  } catch (error) { const err = error as Error;
+    logger.error("Error copying object:", error);
+    return new Response(generateErrorHTML("Error copying file", err.message), {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
   }
-
-  await bucket.put(dstPath, object.body, {
-    httpMetadata: object.httpMetadata
-  });
-
-  return new Response("Copied", { status: 201 });
 }
 
 async function handleMove(request: Request, bucket: R2Bucket): Promise<Response> {
-  const srcPath = make_resource_path(request);
-  const dstPath = request.headers.get("Destination");
-  if (!dstPath) {
-    return new Response("Bad Request", { status: 400 });
+  const sourcePath = make_resource_path(request);
+  const destinationHeader = request.headers.get("Destination");
+  if (!destinationHeader) {
+    return new Response("Bad Request: Destination header is missing", { status: 400 });
   }
+  const destinationUrl = new URL(destinationHeader);
+  const destinationPath = make_resource_path(new Request(destinationUrl));
 
-  const object = await bucket.get(srcPath);
-  if (!object) {
-    return new Response("Not Found", { status: 404 });
+  try {
+    const sourceObject = await bucket.get(sourcePath);
+    if (!sourceObject) {
+      return new Response("Not Found", { status: 404 });
+    }
+
+    await bucket.put(destinationPath, sourceObject.body, {
+      httpMetadata: sourceObject.httpMetadata,
+      customMetadata: sourceObject.customMetadata
+    });
+
+    await bucket.delete(sourcePath);
+    return new Response("No Content", { status: 204 });
+  } catch (error) { const err = error as Error;
+    logger.error("Error moving object:", error);
+    return new Response(generateErrorHTML("Error moving file", err.message), {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
   }
-
-  await bucket.put(dstPath, object.body, {
-    httpMetadata: object.httpMetadata
-  });
-  await bucket.delete(srcPath);
-
-  return new Response("Moved", { status: 201 });
 }
