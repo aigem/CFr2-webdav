@@ -216,6 +216,7 @@ async function handlePropfind(request: Request, bucket: R2Bucket, bucketName: st
     }
 
     const xml = generatePropfindResponse(bucketName, resource_path, props);
+    logger.info("Generated XML for PROPFIND:", xml); // Add this line for logging
     return new Response(xml, {
       status: 207,
       headers: { "Content-Type": "application/xml; charset=utf-8" }
@@ -224,10 +225,11 @@ async function handlePropfind(request: Request, bucket: R2Bucket, bucketName: st
     logger.error("Error in PROPFIND:", error);
     return new Response(generateErrorHTML("Error in PROPFIND", error.message), {
       status: 500,
-      headers: { "Content-Type": "text/html; charset=utf-8" }
+      headers: { "Content-Type": "application/xml; charset=utf-8" }
     });
   }
 }
+
 
 async function handleCopy(request: Request, bucket: R2Bucket): Promise<Response> {
   const sourcePath = make_resource_path(request);
