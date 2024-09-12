@@ -11,11 +11,13 @@
 - 支持文件上传、下载、删除、移动和复制操作
 - 支持目录创建和列表
 
-## 一键部署 [Githut Actions]
+## 一键部署到 Cloudflare Workers
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://github.com/aigem/CFr2-webdav)
+点击下面的按钮，一键将此项目部署到您的Cloudflare Workers账户：
 
-点击上面的按钮，按照提示进行操作，即可快速部署此项目到您的 Cloudflare Workers 账户中。
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_USERNAME/YOUR_REPO)
+
+注需要有Cloudflare账户才能使用此功能。如果您还没有账户，可以在[Cloudflare官www.cloudflare.com)注册。
 
 ## 手动部署步骤 [Githut Actions]
 
