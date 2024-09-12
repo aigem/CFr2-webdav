@@ -2,6 +2,8 @@
 
 这个项目实现了一个基于 Cloudflare Workers 和 R2 存储的 WebDAV 服务器。它允许用户通过 WebDAV 协议访问和管理存储在 Cloudflare R2 中的文件和目录。
 
+[R2免费额度](https://developers.cloudflare.com/r2/pricing/) 
+
 ## 特性
 
 - 完全兼容 WebDAV 协议
@@ -15,7 +17,7 @@
 
 点击下面的按钮，一键将此项目部署到您的Cloudflare Workers账户：
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_USERNAME/YOUR_REPO)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aigem/CFr2-webdav)
 
 注需要有Cloudflare账户才能使用此功能。如果您还没有账户，可以在[Cloudflare官www.cloudflare.com)注册。
 
