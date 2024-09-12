@@ -1,0 +1,261 @@
+{
+  "name": "CFr2 WebDav",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "=PROPFIND",
+        "url": "={{ $json['CFr2 Webdav URL'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "xml/text",
+        "body": "=<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<d:propfind xmlns:d=\"DAV:\">\n<d:allprop/> </d:propfind>",
+        "options": {}
+      },
+      "id": "5ae8b3cb-a521-4408-a13a-6de0fd66e9c9",
+      "name": "List CFr2 webdav",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        660,
+        480
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "IGS9zbgMB0Sphjrq",
+          "name": "Base_user_pass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "62e8db9a-01dc-4b97-9b70-1585312157c7",
+      "name": "XML",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        840,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "CFr2 Webdav URL",
+              "value": "https://你的webdav地址/"
+            },
+            {
+              "name": "new file name",
+              "value": "newfile2.txt"
+            },
+            {
+              "name": "filecontent",
+              "value": "=This is the content of the new file.新的文件by N8N 是也！\nhello world"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4c52160d-ea4b-426c-98ad-1aa696bc14ca",
+      "name": "设置项",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        660,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json['CFr2 Webdav URL'] }}{{ $json['new file name'] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.filecontent }}",
+        "options": {}
+      },
+      "id": "f1b6c7a8-5ee2-4e0b-a8d1-927ec028718c",
+      "name": "上传文件到webdav",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        840,
+        260
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "IGS9zbgMB0Sphjrq",
+          "name": "Base_user_pass"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "convertToHtmlTable",
+        "options": {}
+      },
+      "id": "e6604851-51f3-490d-a54b-448d98859eaa",
+      "name": "HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "['D:multistatus']['D:response']",
+        "options": {}
+      },
+      "id": "e6732cd8-f683-41fa-bff4-e053d7400828",
+      "name": "Item Lists",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        1020,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取 WebDAV JSON 数据\nconst items = $('Item Lists').all(); // 获取所有输入的 JSON 项\n\n// 初始化一个空数组，用于存储所有的 \"D:href\" 值\nconst hrefList = [];\n\n// 遍历所有 JSON 项并提取 \"D:href\"\nitems.forEach((item) => {\n    if (item.json && item.json[\"D:href\"]) {\n        hrefList.push(item.json[\"D:href\"]);\n    }\n});\n\n// 显示 \"D:href\" 的值列表\nconsole.log(\"D:href 列表:\", hrefList);\n\n// 返回一个包含所有 \"D:href\" 的数组，作为下一个节点的输入\nreturn hrefList.map(href => ({ json: { href } }));\n"
+      },
+      "id": "cd85ade2-1d6c-47ed-be18-04c2631241ba",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n\n<html>\n<head>\n  <meta charset=\"UTF-8\" />\n  <title>My HTML document</title>\n</head>\n<body>\n  <div class=\"container\">\n    <h1>列出所有文件</h1>\n    <p>{{ $('HTML').item.json.table }}</p>\n  </div>\n</body>\n</html>\n\n<style>\n.container {\n  background-color: #ffffff;\n  text-align: center;\n  padding: 16px;\n  border-radius: 8px;\n}\n\nh1 {\n  color: #ff6d5a;\n  font-size: 24px;\n  font-weight: bold;\n  padding: 8px;\n}\n\nh2 {\n  color: #909399;\n  font-size: 18px;\n  font-weight: bold;\n  padding: 8px;\n}\n</style>\n"
+      },
+      "id": "f3402453-9a79-4d9f-b705-42eaf8629220",
+      "name": "HTML1",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c12613f1-f466-4d30-af86-28a6cdd46a2f",
+      "name": "请先设置好",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        260
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "List CFr2 webdav": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "设置项": {
+      "main": [
+        [
+          {
+            "node": "上传文件到webdav",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "List CFr2 webdav",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Item Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item Lists": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "请先设置好": {
+      "main": [
+        [
+          {
+            "node": "设置项",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "98177e24-18a0-42bf-8d36-35ec275b4a86",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a21814256a0abe8e07427ccc82d5f3f7dae9c34dbccadc9dbb556bfae5ce2ec8"
+  },
+  "id": "m6YHCqDPucnkkByR",
+  "tags": []
+}
