@@ -3,7 +3,11 @@ import { WebDAVProps } from '../types';
 
 export function make_resource_path(request: Request): string {
   const url = new URL(request.url);
-  return decodeURIComponent(url.pathname.slice(1));
+  let path = decodeURIComponent(url.pathname.slice(1));  // 移除初始的 '/'
+  
+  // 处理 Windows 特殊字符
+  path = path.replace(/\\/g, '/');
+  return path;
 }
 
 export async function* listAll(bucket: R2Bucket, prefix: string) {

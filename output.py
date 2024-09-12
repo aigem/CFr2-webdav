@@ -21,13 +21,13 @@ files_to_export = [
     # "tsconfig.json",
     # "src/utils/templates.ts",
     # "package.json",
-    # "src/index.ts",
-    # "src/types.ts",
+    "src/index.ts",
+    "src/types.ts",
     # "src/handlers/requestHandler.ts",
     "src/handlers/webdavHandler.ts",
-    # "src/utils/auth.ts",
-    # "src/utils/cors.ts",
-    # "src/utils/logger.ts",
+    "src/utils/auth.ts",
+    "src/utils/cors.ts",
+    "src/utils/logger.ts",
     "src/utils/webdavUtils.ts"
 ]
 

@@ -1,10 +1,3 @@
-// import { Env } from '../types';
-
-// export function authenticate(request: Request, env: Env): boolean {
-//   const authHeader = request.headers.get("Authorization");
-//   const expectedAuth = `Basic ${btoa(`${env.USERNAME}:${env.PASSWORD}`)}`;
-//   return authHeader === expectedAuth;
-// }
 import { Env } from '../types';
 
 export function authenticate(request: Request, env: Env): boolean {
@@ -18,6 +11,10 @@ export function authenticate(request: Request, env: Env): boolean {
     return false;
   }
 
-  const [username, password] = atob(authValue).split(':');
-  return username === env.USERNAME && password === env.PASSWORD;
+  try {
+    const [username, password] = atob(authValue).split(':');
+    return username === env.USERNAME && password === env.PASSWORD;
+  } catch (e) {
+    return false;
+  }
 }
