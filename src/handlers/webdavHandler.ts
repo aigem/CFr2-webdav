@@ -8,9 +8,7 @@ import { WebDAVProps, Env } from '../types';
 const SUPPORT_METHODS = ["OPTIONS", "PROPFIND", "MKCOL", "GET", "HEAD", "PUT", "COPY", "MOVE", "DELETE"];
 const DAV_CLASS = "1, 2";
 
-export async function handleWebDAV(request: Request, env: Env): Promise<Response> {
-  const bucket = env.BUCKET;
-  const bucketName = env.BUCKET_NAME;
+export async function handleWebDAV(request: Request, bucket: R2Bucket, bucketName: string, env: Env): Promise<Response> {
 
   // 身份验证处理
   if (!authenticate(request, env)) {
