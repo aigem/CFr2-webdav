@@ -15,7 +15,8 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       });
     }
 
-    const response = await handleWebDAV(request, env.BUCKET, env.BUCKET_NAME);
+    // 直接传递整个 env 对象给 handleWebDAV
+    const response = await handleWebDAV(request, env);
 
     setCORSHeaders(response, request);
     return response;

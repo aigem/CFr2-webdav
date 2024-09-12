@@ -1,8 +1,9 @@
+// 文件名：src/types.ts
 export interface Env {
   BUCKET: R2Bucket;
   USERNAME: string;
   PASSWORD: string;
-  BUCKET_NAME: string;  // 新增的环境变量
+  BUCKET_NAME: string;
 }
 
 export interface CacheableResponse {

@@ -1,13 +1,10 @@
+// 文件名：src/utils/webdavUtils.ts
 import { R2Object } from '@cloudflare/workers-types';
 import { WebDAVProps } from '../types';
 
 export function make_resource_path(request: Request): string {
   const url = new URL(request.url);
-  let path = decodeURIComponent(url.pathname.slice(1));  // 移除初始的 '/'
-  
-  // 处理 Windows 特殊字符
-  path = path.replace(/\\/g, '/');
-  return path;
+  return decodeURIComponent(url.pathname.slice(1));
 }
 
 export async function* listAll(bucket: R2Bucket, prefix: string) {
