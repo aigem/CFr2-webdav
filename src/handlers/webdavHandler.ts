@@ -120,7 +120,7 @@ async function handleDirectory(bucket: R2Bucket, resource_path: string, bucketNa
     });
   }
 
-  const page = generateHTML("WebDAV File Browser", items);
+  const page = generateHTML("WebDAV文件浏览器", items);
   return new Response(page, {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8" }
