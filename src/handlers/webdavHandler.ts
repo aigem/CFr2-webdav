@@ -104,14 +104,17 @@ async function handleDirectory(bucket: R2Bucket, resource_path: string, bucketNa
   }
 
   try {
-    for await (const object of listAll(bucket, resource_path)) {
-      if (object.key === resource_path) continue;
-      const isDirectory = object.customMetadata?.resourcetype === "collection";
-      const displayName = object.key.split('/').pop() || object.key;
-      const href = `/${object.key}${isDirectory ? "/" : ""}`;
-      items.push({ name: `${isDirectory ? '📁 ' : '📄 '}${displayName}`, href });
+    for await (const entry of listAll(bucket, resource_path)) {
+      if (entry.key === resource_path) continue;
+
+      // 显示名只取最后一段：子目录的 key 带前缀（a/b/），直接取整段会把路径显示出来。
+      const displayName = entry.key.slice(resource_path.length).replace(/\/+$/, "");
+      if (!displayName) continue;
+
+      const href = `/${entry.key}`;
+      items.push({ name: `${entry.isDirectory ? '📁 ' : '📄 '}${displayName}`, href });
     }
-  } catch (error) { 
+  } catch (error) {
     const err = error as Error;
     logger.error("Error listing objects:", err.message);
     return new Response(generateErrorHTML("Error listing directory contents", err.message), {
@@ -218,8 +221,8 @@ async function handlePropfind(request: Request, bucket: R2Bucket, bucketName: st
   try {
     const props: WebDAVProps[] = [];
     if (depth !== "0") {
-      for await (const object of listAll(bucket, resource_path)) {
-        props.push(fromR2Object(object));
+      for await (const entry of listAll(bucket, resource_path)) {
+        props.push(fromR2Object(entry.object, entry.key));
       }
     } else {
       const object = await bucket.head(resource_path);

@@ -7,28 +7,50 @@ export function make_resource_path(request: Request): string {
   return decodeURIComponent(url.pathname.slice(1));
 }
 
-export async function* listAll(bucket: R2Bucket, prefix: string) {
-  const options = { prefix, delimiter: "/" };
-  let result = await bucket.list(options);
-
-  while (result.objects.length > 0) {
-    for (const object of result.objects) {
-      yield object;
-    }
-
-    if (result.truncated && result.cursor) {
-      result = await bucket.list({ ...options, cursor: result.cursor });
-    } else {
-      break;
-    }
-  }
+/** 一条列表记录：要么是一个对象，要么是一个目录（R2 以 common prefix 的形式返回）。 */
+export interface R2ListEntry {
+  key: string;
+  isDirectory: boolean;
+  object: R2Object | null;
 }
 
-export function fromR2Object(object: R2Object | null): WebDAVProps {
+export async function* listAll(bucket: R2Bucket, prefix: string): AsyncGenerator<R2ListEntry> {
+  const options = { prefix, delimiter: "/" };
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+
+  do {
+    const result = await bucket.list({ ...options, cursor });
+
+    for (const object of result.objects) {
+      if (seen.has(object.key)) continue;
+      seen.add(object.key);
+      yield {
+        key: object.key,
+        isDirectory: object.key.endsWith("/") || object.customMetadata?.resourcetype === "collection",
+        object
+      };
+    }
+
+    // R2 把子目录放在 delimitedPrefixes 里返回，而不是作为对象返回：
+    // 不处理它们，目录既不会出现在列表里，也不会出现在 PROPFIND 的结果里。
+    for (const key of result.delimitedPrefixes) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      yield { key, isDirectory: true, object: null };
+    }
+
+    // 以 truncated/cursor 为准，而不是以本页的对象数量为准：
+    // 某一页只有 common prefix 而没有对象时，用对象数量判断会提前结束，漏掉后面的页。
+    cursor = result.truncated && result.cursor ? result.cursor : undefined;
+  } while (cursor);
+}
+
+export function fromR2Object(object: R2Object | null, key = object?.key ?? ""): WebDAVProps {
   if (!object) {
     return {
       creationdate: new Date().toUTCString(),
-      displayname: undefined,
+      displayname: key.replace(/\/+$/, "").split("/").pop(),
       getcontentlanguage: undefined,
       getcontentlength: "0",
       getcontenttype: undefined,
@@ -39,7 +61,7 @@ export function fromR2Object(object: R2Object | null): WebDAVProps {
   }
   return {
     creationdate: object.uploaded.toUTCString(),
-    displayname: object.key.split('/').pop(),
+    displayname: object.key.replace(/\/+$/, "").split("/").pop(),
     getcontentlanguage: object.httpMetadata?.contentLanguage,
     getcontentlength: object.size.toString(),
     getcontenttype: object.httpMetadata?.contentType,
@@ -58,7 +80,12 @@ ${responses}
 }
 
 function generatePropResponse(bucketName: string, basePath: string, prop: WebDAVProps): string {
-  const resourcePath = `/${bucketName}/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
+  const isCollection = prop.resourcetype === "collection";
+  const name = prop.displayname ?? "";
+  const base = basePath ? `/${basePath.replace(/\/+$/, "")}` : "";
+  const resourcePath = name
+    ? `/${bucketName}${base}/${name}${isCollection ? "/" : ""}`
+    : `/${bucketName}${base}${isCollection ? "/" : ""}`;
   return `  <D:response>
     <D:href>${resourcePath}</D:href>
     <D:propstat>
