@@ -156,14 +156,16 @@ async function handlePut(request: Request, bucket: R2Bucket): Promise<Response> 
   const resource_path = make_resource_path(request);
 
   try {
-    const body = await request.arrayBuffer();
-    await bucket.put(resource_path, body, {
+    // Pass the request body straight to R2 instead of buffering it with
+    // arrayBuffer(): a buffered upload is held in Worker memory for its whole
+    // length, so anything above the request size limit failed instead of streaming.
+    await bucket.put(resource_path, request.body, {
       httpMetadata: {
         contentType: request.headers.get("Content-Type") || "application/octet-stream",
       },
     });
     return new Response("Created", { status: 201 });
-  } catch (error) { 
+  } catch (error) {
     const err = error as Error;
     logger.error("Error uploading file:", err.message);
     return new Response(generateErrorHTML("Error uploading file", err.message), {
