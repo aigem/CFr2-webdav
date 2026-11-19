@@ -1,3 +1,12 @@
+/** Escape a value for use as HTML text or in a double-quoted attribute. */
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
 export function generateHTML(title: string, items: { name: string, href: string }[]): string {
     return `
       <!DOCTYPE html>
@@ -44,7 +53,7 @@ export function generateHTML(title: string, items: { name: string, href: string 
           <div class="file-list">
               ${items.map(item => `
                   <div class="file-item">
-                      <a href="${item.href}">${item.name}</a>
+                      <a href="${escapeHtml(item.href)}">${escapeHtml(item.name)}</a>
                   </div>
               `).join('')}
           </div>
@@ -84,7 +93,7 @@ export function generateHTML(title: string, items: { name: string, href: string 
       <body>
           <h1>${title}</h1>
           <div class="error-message">
-              ${message}
+              ${escapeHtml(message)}
           </div>
       </body>
       </html>
