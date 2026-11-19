@@ -1,0 +1,12 @@
+name = "cf-r2-webdav"
+main = "src/index.ts"
+compatibility_date = "2023-01-01"
+
+[vars]
+USERNAME = "_user"
+PASSWORD = "_pass"
+BUCKET_NAME = "cf-r2-webdav-bucket"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "cf-r2-webdav-bucket"

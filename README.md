@@ -4,7 +4,7 @@
 
 [R2免费额度](https://developers.cloudflare.com/r2/pricing/)  [视频教程](https://www.bilibili.com/video/BV1mh4peNECe/)
 
-![部署Cloudflare R2 WebDAV服务，超简单拥有自己的私人网盘](https://raw.githubusercontent.com/aigem/CFr2-webdav/main/%E5%85%8D%E8%B4%B9%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2Cloudflare%20R2%20WebDAV%E6%9C%8D%E5%8A%A1%EF%BC%8C%E8%B6%85%E7%AE%80%E5%8D%95%E6%8B%A5%E6%9C%89%E8%87%AA%E5%B7%B1%E7%9A%84%E7%A7%81%E4%BA%BA%E7%BD%91%E7%9B%98-%E5%B0%81%E9%9D%A2.jpg)
+![部署Cloudflare R2 WebDAV服务，超简单拥有自己的私人网盘](https://raw.githubusercontent.com/aigem/CFr2-webdav/main/cover.jpg)
 
 
 ## 特性
@@ -22,7 +22,12 @@
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aigem/CFr2-webdav)
 
-注需要有Cloudflare账户才能使用此功能。如果您还没有账户，可以在[Cloudflare官www.cloudflare.com)注册。
+注需要有Cloudflare账户才能使用此功能。如果您还没有账户，可以在[Cloudflare官网](https://www.cloudflare.com)注册。
+
+部署时请在配置页填写：
+
+- `USERNAME` / `PASSWORD`：WebDAV 登录用户名和密码（默认 `_user` / `_pass`，建议改掉）
+- `BUCKET_NAME`：R2 存储桶名称（默认 `cf-r2-webdav-bucket`，Cloudflare 会自动创建）
 
 ## 手动部署步骤 [Githut Actions]
 
