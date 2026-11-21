@@ -173,13 +173,38 @@ async function handlePut(request: Request, bucket: R2Bucket): Promise<Response> 
   }
 }
 
+// 递归删除前缀下的全部对象：不设 delimiter 才能拿到任意深度的后代，
+// 按页删除（每页最多 1000 个 key），游标按字典序推进，删除已见过的 key 不影响后续页。
+async function deleteByPrefix(bucket: R2Bucket, prefix: string): Promise<void> {
+  let cursor: string | undefined;
+  do {
+    const page = await bucket.list(cursor ? { prefix, cursor } : { prefix });
+    const keys = page.objects.map((object) => object.key);
+    if (keys.length > 0) {
+      await bucket.delete(keys);
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+}
+
 async function handleDelete(request: Request, bucket: R2Bucket): Promise<Response> {
   const resource_path = make_resource_path(request);
+  // 'docs/' 与 'docs' 都指向同一资源：尾斜杠是集合写法，先归一化成 base
+  const basePath = resource_path.replace(/\/+$/, "");
+
+  if (basePath === "") {
+    // 根路径递归删除等于清空整个桶，直接拒绝
+    return new Response("Forbidden", { status: 403 });
+  }
 
   try {
-    await bucket.delete(resource_path);
-    return new Response("No Content", { status: 204 });
-  } catch (error) { 
+    // RFC 4918 §9.6.1：删除集合必须删除其全部成员。
+    // base 是文件形式的 key（仅集合时删除为 no-op），前缀下是 marker + 全部后代。
+    await bucket.delete(basePath);
+    await deleteByPrefix(bucket, `${basePath}/`);
+    // 204 属于 null body status，带 body 构造 Response 会直接抛错（fetch 规范）
+    return new Response(null, { status: 204 });
+  } catch (error) {
     const err = error as Error;
     logger.error("Error deleting object:", err.message);
     return new Response(generateErrorHTML("Error deleting file", err.message), {
@@ -298,7 +323,8 @@ async function handleMove(request: Request, bucket: R2Bucket): Promise<Response>
     });
 
     await bucket.delete(sourcePath);
-    return new Response("No Content", { status: 204 });
+    // 204 属于 null body status，带 body 构造 Response 会直接抛错（fetch 规范）
+    return new Response(null, { status: 204 });
   } catch (error) { 
     const err = error as Error;
     logger.error("Error moving object:", err.message);
