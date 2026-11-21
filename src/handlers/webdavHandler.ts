@@ -255,16 +255,49 @@ async function handleCopy(request: Request, bucket: R2Bucket): Promise<Response>
   const destinationUrl = new URL(destinationHeader);
   const destinationPath = make_resource_path(new Request(destinationUrl));
 
+  const srcBase = sourcePath.replace(/\/+$/, "");
+  const dstBase = destinationPath.replace(/\/+$/, "");
+
+  // 根路径、同路径、或目标落在源内部：源保持不动，但同路径无意义，
+  // 目标嵌套在源内会让分页游标被自己刚写入的 key 污染，必须挡住
+  if (srcBase === "" || dstBase === "" || srcBase === dstBase || dstBase.startsWith(srcBase + "/")) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   try {
-    const sourceObject = await bucket.get(sourcePath);
-    if (!sourceObject) {
-      return new Response("Not Found", { status: 404 });
+    let copied = false;
+
+    // 文件形式的 key（纯文件；与集合同名并存时一并复制）
+    const fileObject = await bucket.get(srcBase);
+    if (fileObject) {
+      await bucket.put(dstBase, fileObject.body, {
+        httpMetadata: fileObject.httpMetadata,
+        customMetadata: fileObject.customMetadata
+      });
+      copied = true;
     }
 
-    await bucket.put(destinationPath, sourceObject.body, {
-      httpMetadata: sourceObject.httpMetadata,
-      customMetadata: sourceObject.customMetadata
-    });
+    // 集合：按页复制前缀下全部后代（含 marker），源侧一个 key 都不删。
+    // 不设 delimiter 才能拿到任意深度；游标按字典序推进。
+    const prefix = `${srcBase}/`;
+    let cursor: string | undefined;
+    do {
+      const page = await bucket.list(cursor ? { prefix, cursor } : { prefix });
+      for (const object of page.objects) {
+        const sourceObject = await bucket.get(object.key);
+        if (!sourceObject) continue;
+        await bucket.put(`${dstBase}/${object.key.slice(prefix.length)}`, sourceObject.body, {
+          httpMetadata: sourceObject.httpMetadata,
+          customMetadata: sourceObject.customMetadata
+        });
+        copied = true;
+      }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+
+    if (!copied) {
+      return new Response("Not Found", { status: 404 });
+    }
 
     return new Response("Created", { status: 201 });
   } catch (error) { 
