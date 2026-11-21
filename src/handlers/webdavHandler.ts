@@ -286,19 +286,58 @@ async function handleMove(request: Request, bucket: R2Bucket): Promise<Response>
   const destinationUrl = new URL(destinationHeader);
   const destinationPath = make_resource_path(new Request(destinationUrl));
 
+  const srcBase = sourcePath.replace(/\/+$/, "");
+  const dstBase = destinationPath.replace(/\/+$/, "");
+
+  // 根路径、同路径、或目标落在源内部：递归搬动会清桶/自嵌套，直接拒绝
+  if (srcBase === "" || dstBase === "" || srcBase === dstBase || dstBase.startsWith(srcBase + "/")) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   try {
-    const sourceObject = await bucket.get(sourcePath);
-    if (!sourceObject) {
+    let moved = false;
+
+    // 文件形式的 key（纯文件；与集合同名并存时一并搬走）
+    const fileObject = await bucket.get(srcBase);
+    if (fileObject) {
+      await bucket.put(dstBase, fileObject.body, {
+        httpMetadata: fileObject.httpMetadata,
+        customMetadata: fileObject.customMetadata
+      });
+      await bucket.delete(srcBase);
+      moved = true;
+    }
+
+    // 集合：按页搬前缀下全部后代（含 marker）。不设 delimiter 才能拿到任意深度；
+    // 游标按字典序推进，页内先复制再删源，删除已见 key 不影响后续页。
+    const prefix = `${srcBase}/`;
+    let cursor: string | undefined;
+    do {
+      const page = await bucket.list(cursor ? { prefix, cursor } : { prefix });
+      const copied: string[] = [];
+      for (const object of page.objects) {
+        const sourceObject = await bucket.get(object.key);
+        if (!sourceObject) continue;
+        await bucket.put(`${dstBase}/${object.key.slice(prefix.length)}`, sourceObject.body, {
+          httpMetadata: sourceObject.httpMetadata,
+          customMetadata: sourceObject.customMetadata
+        });
+        copied.push(object.key);
+      }
+      if (copied.length > 0) {
+        await bucket.delete(copied);
+        moved = true;
+      }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+
+    if (!moved) {
       return new Response("Not Found", { status: 404 });
     }
 
-    await bucket.put(destinationPath, sourceObject.body, {
-      httpMetadata: sourceObject.httpMetadata,
-      customMetadata: sourceObject.customMetadata
-    });
-
     await bucket.delete(sourcePath);
-    return new Response("No Content", { status: 204 });
+    // 204 属于 null body status，带 body 构造 Response 会直接抛错（fetch 规范）
+    return new Response(null, { status: 204 });
   } catch (error) { 
     const err = error as Error;
     logger.error("Error moving object:", err.message);
